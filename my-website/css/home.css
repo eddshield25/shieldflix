@@ -38,8 +38,12 @@ body {
   z-index: 5;
 }
 
+/* LOGO IMAGE STYLE ADJUSTMENT */
 .logo-image { 
   height: 40px; 
+  /* The new logo is round, you might consider setting a fixed width/height 
+     and object-fit: contain if the aspect ratio isn't exactly square. */
+  border-radius: 50%; /* Makes the dark background area match the circle */
 }
 
 .nav-links a {
