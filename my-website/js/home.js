@@ -7,20 +7,85 @@ const API_CONFIG = {
 
 // --- State Variables ---
 let currentItem = null;
+let currentTheme = 'dark';
+
+// --- Utility Functions ---
+
+/**
+ * Shows loading screen
+ */
+function showLoading() {
+  document.getElementById('loading-screen').classList.remove('hidden');
+}
+
+/**
+ * Hides loading screen
+ */
+function hideLoading() {
+  document.getElementById('loading-screen').classList.add('hidden');
+}
+
+/**
+ * Formats date to readable string
+ */
+function formatDate(dateString) {
+  if (!dateString) return 'Unknown';
+  const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
+/**
+ * Toggles between dark and light theme
+ */
+function toggleTheme() {
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  currentTheme = newTheme;
+  
+  // Update theme toggle icon
+  const themeIcon = document.querySelector('.theme-toggle i');
+  themeIcon.className = currentTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+  
+  // Save preference to localStorage
+  localStorage.setItem('theme', newTheme);
+}
+
+/**
+ * Scrolls to top of page
+ */
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/**
+ * Scrolls to content section
+ */
+function scrollToContent() {
+  document.getElementById('trending-section').scrollIntoView({ 
+    behavior: 'smooth' 
+  });
+}
+
+/**
+ * Scrolls media lists horizontally
+ */
+function scrollList(containerId, distance) {
+  const container = document.getElementById(containerId);
+  container.scrollBy({ left: distance, behavior: 'smooth' });
+}
 
 // --- API Fetching Functions ---
 
 /**
  * Fetches trending movies or TV shows from TMDB.
- * @param {'movie' | 'tv'} type - The media type to fetch.
- * @returns {Promise<Array<Object>>} - Array of media items.
  */
 async function fetchTrending(type) {
   try {
-    const response = await fetch(`${API_CONFIG.BASE_URL}/trending/${type}/week?api_key=${API_CONFIG.KEY}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    const response = await fetch(
+      `${API_CONFIG.BASE_URL}/trending/${type}/week?api_key=${API_CONFIG.KEY}`
+    );
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
     const data = await response.json();
     return data.results || [];
   } catch (error) {
@@ -30,30 +95,29 @@ async function fetchTrending(type) {
 }
 
 /**
- * Fetches trending TV shows and filters for Japanese anime.
- * @returns {Promise<Array<Object>>} - Array of anime items.
+ * Fetches trending anime by filtering Japanese animation.
  */
 async function fetchTrendingAnime() {
   let allResults = [];
-  const MAX_PAGES = 3; 
-  const ANIME_GENRE_ID = 16; // TMDB Genre ID for Animation
+  const MAX_PAGES = 3;
+  const ANIME_GENRE_ID = 16;
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/trending/tv/week?api_key=${API_CONFIG.KEY}&page=${page}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      
-      const filtered = data.results.filter(item =>
-        item.original_language === 'ja' && // Japanese language
-        item.genre_ids && item.genre_ids.includes(ANIME_GENRE_ID) // Must include Animation genre
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}/trending/tv/week?api_key=${API_CONFIG.KEY}&page=${page}`
       );
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
+      const filtered = data.results.filter(item =>
+        item.original_language === 'ja' &&
+        item.genre_ids && item.genre_ids.includes(ANIME_GENRE_ID)
+      );
+      
       allResults = allResults.concat(filtered);
     } catch (error) {
-      console.error(`Error fetching trending anime page ${page}:`, error);
-      // Continue to next page or break, depending on desired robustness
+      console.error(`Error fetching anime page ${page}:`, error);
     }
   }
 
@@ -63,106 +127,127 @@ async function fetchTrendingAnime() {
 // --- DOM Manipulation / Display Functions ---
 
 /**
- * Displays the main banner background and title.
- * @param {Object} item - The media item for the banner.
+ * Displays the hero banner with random content.
  */
 function displayBanner(item) {
   const bannerElement = document.getElementById('banner');
   const titleElement = document.getElementById('banner-title');
+  const descElement = document.getElementById('banner-description');
   
   if (item && item.backdrop_path) {
     bannerElement.style.backgroundImage = `url(${API_CONFIG.IMG_URL}${item.backdrop_path})`;
-    titleElement.textContent = item.title || item.name || '';
+    titleElement.textContent = item.title || item.name || 'StreamFlix';
+    descElement.textContent = item.overview 
+      ? (item.overview.substring(0, 150) + '...') 
+      : 'Discover thousands of movies and TV shows';
   }
 }
 
 /**
- * Populates a horizontal list container with media posters.
- * @param {Array<Object>} items - Array of media items.
- * @param {string} containerId - ID of the container element.
+ * Creates a media card element.
+ */
+function createMediaCard(item) {
+  if (!item.poster_path) return null;
+
+  const card = document.createElement('div');
+  card.className = 'media-card';
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  
+  card.innerHTML = `
+    <img src="${API_CONFIG.IMG_URL}${item.poster_path}" 
+         alt="Poster for ${item.title || item.name}" 
+         class="media-poster" />
+    <div class="media-info">
+      <h3 class="media-title">${item.title || item.name}</h3>
+      <div class="media-meta">
+        <div class="stars">${renderRating(item.vote_average)}</div>
+        <span>${(item.vote_average / 2).toFixed(1)}</span>
+      </div>
+    </div>
+  `;
+
+  // Add click and keyboard events
+  const clickHandler = () => showDetails(item);
+  card.onclick = clickHandler;
+  card.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      clickHandler();
+    }
+  };
+
+  return card;
+}
+
+/**
+ * Populates a media list with cards.
  */
 function displayList(items, containerId) {
   const container = document.getElementById(containerId);
-  if (!container) return; 
+  if (!container) return;
 
-  container.innerHTML = ''; // Clear previous content
+  container.innerHTML = '';
   items.forEach(item => {
-    if (!item.poster_path) return; // Skip items without a poster
-    
-    const img = document.createElement('img');
-    img.src = `${API_CONFIG.IMG_URL}${item.poster_path}`;
-    img.alt = `Poster for ${item.title || item.name}`;
-    img.classList.add('media-poster');
-    img.setAttribute('role', 'button');
-    img.setAttribute('tabindex', '0');
-    
-    // Attach click and keyboard event handlers
-    const clickHandler = () => showDetails(item);
-    img.onclick = clickHandler;
-    img.onkeydown = (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            clickHandler();
-        }
-    };
-    
-    container.appendChild(img);
+    const card = createMediaCard(item);
+    if (card) container.appendChild(card);
   });
 }
 
 /**
- * Renders the star rating based on the vote average.
- * @param {number} voteAverage - The average vote (out of 10).
- * @returns {string} - HTML string of star characters.
+ * Renders star rating based on vote average.
  */
 function renderRating(voteAverage) {
-  // TMDB is out of 10, common star rating is out of 5
-  const ratingOutOfFive = Math.round(voteAverage / 2); 
+  const ratingOutOfFive = Math.round(voteAverage / 2);
   return '★'.repeat(ratingOutOfFive) + '☆'.repeat(5 - ratingOutOfFive);
 }
 
 // --- Modal and Details Logic ---
 
 /**
- * Shows the modal with details for a selected media item.
- * @param {Object} item - The media item to display.
+ * Shows detailed modal for selected media item.
  */
 function showDetails(item) {
   currentItem = item;
   
   // Set media details
   document.getElementById('modal-title').textContent = item.title || item.name;
-  document.getElementById('modal-description').textContent = item.overview || 'No description available.';
-  document.getElementById('modal-image').src = `${API_CONFIG.IMG_URL}${item.poster_path}`;
-  document.getElementById('modal-image').alt = `Poster for ${item.title || item.name}`;
+  document.getElementById('modal-description').textContent = 
+    item.overview || 'No description available.';
+  document.getElementById('modal-image').src = 
+    `${API_CONFIG.IMG_URL}${item.poster_path}`;
+  document.getElementById('modal-image').alt = 
+    `Poster for ${item.title || item.name}`;
   
-  // Set rating
+  // Set additional metadata
   document.getElementById('modal-rating').innerHTML = renderRating(item.vote_average);
+  document.getElementById('modal-rating-text').textContent = 
+    `${(item.vote_average / 2).toFixed(1)}/5`;
+  document.getElementById('modal-date').textContent = 
+    formatDate(item.release_date || item.first_air_date);
   
-  // Reset server selector and load iframe
-  document.getElementById('server').value = 'vidsrc.cc'; // Default to first server
-  changeServer(); 
+  // Reset server and load video
+  document.getElementById('server').value = 'vidsrc.cc';
+  changeServer();
   
-  // Display modal
+  // Show modal
   document.getElementById('modal').style.display = 'flex';
-  document.body.style.overflow = 'hidden'; // Prevent scrolling background
+  document.body.style.overflow = 'hidden';
 }
 
 /**
- * Updates the video iframe source based on the selected server.
+ * Updates video iframe based on selected server.
  */
 function changeServer() {
   if (!currentItem) return;
 
   const server = document.getElementById('server').value;
-  // Determine if it's a movie or TV show for the embed URL
   const type = (currentItem.media_type === "movie" || currentItem.title) ? "movie" : "tv";
   let embedURL = "";
 
-  // Mapping server values to the correct embed URLs
   if (server === "vidsrc.cc") {
     embedURL = `https://vidsrc.cc/v2/embed/${type}/${currentItem.id}`;
-  } else if (server === "vidsrc.net") { // Corrected from vidsrc.me
+  } else if (server === "vidsrc.net") {
     embedURL = `https://vidsrc.net/embed/${type}/?tmdb=${currentItem.id}`;
   } else if (server === "player.videasy.net") {
     embedURL = `https://player.videasy.net/${type}/${currentItem.id}`;
@@ -172,25 +257,27 @@ function changeServer() {
 }
 
 /**
- * Closes the details modal and stops the video.
+ * Closes the details modal.
  */
 function closeModal() {
   document.getElementById('modal').style.display = 'none';
-  document.getElementById('modal-video').src = ''; // Stop video playback
-  document.body.style.overflow = 'auto'; 
+  document.getElementById('modal-video').src = '';
+  document.body.style.overflow = 'auto';
 }
 
+// --- Search Functionality ---
+
 /**
- * Opens the search overlay modal.
+ * Opens search modal.
  */
 function openSearchModal() {
-  document.getElementById('search-modal').style.display = 'flex';
+  document.getElementById('search-modal').style.display = 'block';
   document.getElementById('search-input').focus();
-  document.body.style.overflow = 'hidden'; // Prevent scrolling background
+  document.body.style.overflow = 'hidden';
 }
 
 /**
- * Closes the search overlay modal.
+ * Closes search modal.
  */
 function closeSearchModal() {
   document.getElementById('search-modal').style.display = 'none';
@@ -200,91 +287,172 @@ function closeSearchModal() {
 }
 
 /**
- * Searches TMDB for media based on user input.
+ * Searches TMDB and displays results.
  */
 async function searchTMDB() {
   const query = document.getElementById('search-input').value.trim();
   const container = document.getElementById('search-results');
-  container.innerHTML = '';
+  const emptyState = document.getElementById('search-empty');
   
   if (!query) {
+    container.innerHTML = '';
+    if (emptyState) container.appendChild(emptyState);
     return;
   }
 
-  try {
-    const response = await fetch(`${API_CONFIG.BASE_URL}/search/multi?api_key=${API_CONFIG.KEY}&query=${encodeURIComponent(query)}`);
-    if (!response.ok) {
-        throw new Error(`Search error! status: ${response.status}`);
-    }
-    const data = await response.json();
+  // Remove empty state during search
+  if (emptyState) emptyState.remove();
 
-    data.results.forEach(item => {
-      // Filter out people, items without a title/name, and items without a poster
-      if (item.media_type === 'person' || (!item.poster_path && !item.backdrop_path) || (!item.title && !item.name)) return;
-      
-      const img = document.createElement('img');
-      img.src = `${API_CONFIG.IMG_URL}${item.poster_path}`;
-      img.alt = `Poster for ${item.title || item.name}`;
-      img.classList.add('media-poster');
-      img.setAttribute('role', 'button');
-      img.setAttribute('tabindex', '0');
-      
-      const clickHandler = () => {
-        closeSearchModal();
-        showDetails(item);
-      };
-      
-      img.onclick = clickHandler;
-      img.onkeydown = (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            clickHandler();
-        }
-      };
-      
-      container.appendChild(img);
+  try {
+    const response = await fetch(
+      `${API_CONFIG.BASE_URL}/search/multi?api_key=${API_CONFIG.KEY}&query=${encodeURIComponent(query)}`
+    );
+    if (!response.ok) throw new Error(`Search error! status: ${response.status}`);
+    
+    const data = await response.json();
+    container.innerHTML = '';
+
+    const validResults = data.results.filter(item =>
+      item.media_type !== 'person' &&
+      (item.poster_path || item.backdrop_path) &&
+      (item.title || item.name)
+    );
+
+    if (validResults.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-search"></i>
+          <p>No results found for "${query}"</p>
+        </div>
+      `;
+      return;
+    }
+
+    validResults.forEach(item => {
+      const card = createMediaCard(item);
+      if (card) {
+        // Update click handler to close search modal first
+        const originalClick = card.onclick;
+        card.onclick = () => {
+          closeSearchModal();
+          originalClick();
+        };
+        container.appendChild(card);
+      }
     });
 
-    if (container.children.length === 0) {
-        container.innerHTML = '<p class="no-results-message">No results found. Try a different search term.</p>';
-    }
-
   } catch (error) {
-    console.error("Error during search:", error);
-    container.innerHTML = '<p class="error-message">Could not perform search. Please try again.</p>';
+    console.error("Search error:", error);
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>Search failed. Please try again.</p>
+      </div>
+    `;
   }
 }
 
-// --- Initialization ---
+// --- Event Listeners and Initialization ---
 
 /**
- * Main function to initialize the application.
+ * Sets up event listeners.
+ */
+function setupEventListeners() {
+  // Close modals on outside click
+  document.addEventListener('click', (e) => {
+    const modal = document.getElementById('modal');
+    const searchModal = document.getElementById('search-modal');
+    
+    if (e.target === modal) closeModal();
+    if (e.target === searchModal) closeSearchModal();
+  });
+
+  // Close modals on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      closeSearchModal();
+    }
+  });
+
+  // Show back-to-top button on scroll
+  window.addEventListener('scroll', () => {
+    const backToTop = document.getElementById('back-to-top');
+    const navbar = document.querySelector('.navbar');
+    
+    if (window.scrollY > 300) {
+      backToTop.style.display = 'flex';
+      navbar.classList.add('scrolled');
+    } else {
+      backToTop.style.display = 'none';
+      navbar.classList.remove('scrolled');
+    }
+  });
+
+  // Search on Enter key
+  document.getElementById('search-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchTMDB();
+  });
+}
+
+/**
+ * Loads saved theme preference.
+ */
+function loadThemePreference() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  currentTheme = savedTheme;
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  
+  const themeIcon = document.querySelector('.theme-toggle i');
+  themeIcon.className = savedTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+}
+
+/**
+ * Main initialization function.
  */
 async function init() {
-  // Fetch data concurrently for faster loading
-  const [movies, tvShows, anime] = await Promise.all([
-    fetchTrending('movie'),
-    fetchTrending('tv'),
-    fetchTrendingAnime()
-  ]);
+  showLoading();
+  loadThemePreference();
+  setupEventListeners();
 
-  // Display banner with a random movie (or first if random fails)
-  if (movies.length > 0) {
-    displayBanner(movies[Math.floor(Math.random() * movies.length)]);
+  try {
+    const [movies, tvShows, anime] = await Promise.all([
+      fetchTrending('movie'),
+      fetchTrending('tv'),
+      fetchTrendingAnime()
+    ]);
+
+    // Display banner with random content
+    if (movies.length > 0) {
+      const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+      displayBanner(randomMovie);
+    }
+
+    // Display all lists
+    displayList(movies, 'movies-list');
+    displayList(tvShows, 'tvshows-list');
+    displayList(anime, 'anime-list');
+
+  } catch (error) {
+    console.error('Initialization error:', error);
+  } finally {
+    setTimeout(hideLoading, 1000); // Ensure loading screen shows briefly
   }
 
-  // Display lists
-  displayList(movies, 'movies-list');
-  displayList(tvShows, 'tvshows-list');
-  displayList(anime, 'anime-list');
-  
-  // Expose functions globally for HTML inline handlers (a common pattern for this style of app)
+  // Expose functions globally
   window.closeModal = closeModal;
   window.changeServer = changeServer;
   window.openSearchModal = openSearchModal;
   window.closeSearchModal = closeSearchModal;
   window.searchTMDB = searchTMDB;
+  window.toggleTheme = toggleTheme;
+  window.scrollToTop = scrollToTop;
+  window.scrollToContent = scrollToContent;
+  window.scrollList = scrollList;
+  window.playTrailer = () => alert('Trailer feature coming soon!');
+  window.addToFavorites = () => alert('Added to favorites!');
+  window.shareMedia = () => alert('Share feature coming soon!');
 }
 
-// Start the application
-init();
+// Start the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', init);
