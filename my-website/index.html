@@ -3,95 +3,249 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Free Flix | Home</title>
+  <meta name="description" content="Stream trending movies, TV shows, and anime for free">
+  <title>FreeFlix | Free Movies & TV Shows</title>
   <link rel="stylesheet" href="css/home.css">
   <link rel="preload" href="css/home.css" as="style">
   <link rel="preload" href="js/home.js" as="script">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <script async src="js/home.js"></script>
 </head>
 
 <body>
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loading-screen">
+    <div class="loading-spinner"></div>
+    <p>Loading awesome content...</p>
+  </div>
+
   <header class="navbar">
-    <a href="index.html" class="logo-link" aria-label="Go to Free Flix homepage">
-      <img src="image/logo.png" alt="  Free Flix " class="logo-image" />
-    </a>
-    <nav class="nav-links">
-      <a href="index.html" aria-current="page">Home</a>
-    </nav>
-    <div class="search-container">
-      <input type="text" class="search-bar" placeholder="Search for movies or shows" aria-label="Search for movies or shows" onfocus="openSearchModal()" />
-      <button class="search-icon" aria-label="Open search" onclick="openSearchModal()">
-        <i class="fas fa-search"></i>
-      </button>
+    <div class="nav-container">
+      <a href="index.html" class="logo-link" aria-label="Go to homepage">
+        <div class="logo">
+          <i class="fas fa-play-circle"></i>
+          <span>FreeFlix</span>
+        </div>
+      </a>
+      <nav class="nav-links">
+        <a href="index.html" aria-current="page" class="nav-link active">
+          <i class="fas fa-home"></i> Home
+        </a>
+        <a href="#" class="nav-link">
+          <i class="fas fa-fire"></i> Trending
+        </a>
+        <a href="#" class="nav-link">
+          <i class="fas fa-heart"></i> Favorites
+        </a>
+      </nav>
+      <div class="nav-actions">
+        <div class="search-container">
+          <input type="text" class="search-bar" placeholder="Search movies, shows..." 
+                 aria-label="Search for movies or shows" onfocus="openSearchModal()" />
+          <button class="search-icon" aria-label="Open search" onclick="openSearchModal()">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <button class="theme-toggle" aria-label="Toggle dark mode" onclick="toggleTheme()">
+          <i class="fas fa-moon"></i>
+        </button>
+      </div>
     </div>
   </header>
 
   <main>
-    <section class="banner" id="banner" role="banner">
-      <h1 id="banner-title" class="banner-title"></h1>
+    <!-- Hero Banner -->
+    <section class="hero-banner" id="banner" role="banner">
+      <div class="banner-overlay"></div>
+      <div class="banner-content">
+        <h1 id="banner-title" class="banner-title">Welcome to StreamFlix</h1>
+        <p id="banner-description" class="banner-description">Discover thousands of movies and TV shows</p>
+        <div class="banner-actions">
+          <button class="btn btn-primary" onclick="openSearchModal()">
+            <i class="fas fa-play"></i> Start Watching
+          </button>
+          <button class="btn btn-secondary" onclick="scrollToContent()">
+            <i class="fas fa-info-circle"></i> Learn More
+          </button>
+        </div>
+      </div>
     </section>
 
-    <section class="content-row">
-      <h2 class="row-title">🔥 Trending Movies</h2>
-      <div class="list media-list" id="movies-list"></div>
+    <!-- Content Sections -->
+    <section class="content-section" id="trending-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-fire"></i> Trending Movies
+        </h2>
+        <div class="section-controls">
+          <button class="nav-btn prev-btn" onclick="scrollList('movies-list', -300)">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-btn next-btn" onclick="scrollList('movies-list', 300)">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="media-scroller" id="movies-list">
+        <!-- Movies will be loaded here -->
+      </div>
     </section>
 
-    <section class="content-row">
-      <h2 class="row-title">📺 Trending TV Shows</h2>
-      <div class="list media-list" id="tvshows-list"></div>
+    <section class="content-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-tv"></i> Popular TV Shows
+        </h2>
+        <div class="section-controls">
+          <button class="nav-btn prev-btn" onclick="scrollList('tvshows-list', -300)">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-btn next-btn" onclick="scrollList('tvshows-list', 300)">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="media-scroller" id="tvshows-list">
+        <!-- TV Shows will be loaded here -->
+      </div>
     </section>
 
-    <section class="content-row">
-      <h2 class="row-title">🍜 Trending Anime</h2>
-      <div class="list media-list" id="anime-list"></div>
+    <section class="content-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-dragon"></i> Top Anime
+        </h2>
+        <div class="section-controls">
+          <button class="nav-btn prev-btn" onclick="scrollList('anime-list', -300)">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-btn next-btn" onclick="scrollList('anime-list', 300)">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="media-scroller" id="anime-list">
+        <!-- Anime will be loaded here -->
+      </div>
     </section>
   </main>
 
+  <!-- Video Modal -->
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-content">
-      <button class="close-btn" onclick="closeModal()" aria-label="Close movie details">&times;</button>
+      <button class="close-btn" onclick="closeModal()" aria-label="Close movie details">
+        <i class="fas fa-times"></i>
+      </button>
       <div class="modal-body">
-        <img id="modal-image" src="" alt="Poster image" class="modal-poster" />
+        <div class="modal-poster-container">
+          <img id="modal-image" src="" alt="Poster image" class="modal-poster" />
+          <div class="poster-overlay">
+            <button class="btn btn-play" onclick="playTrailer()">
+              <i class="fas fa-play"></i> Play Trailer
+            </button>
+          </div>
+        </div>
         <div class="modal-text">
           <h2 id="modal-title" class="modal-item-title"></h2>
-          <div class="stars" id="modal-rating" aria-label="User rating"></div>
+          <div class="media-meta">
+            <div class="stars" id="modal-rating" aria-label="User rating"></div>
+            <span class="rating-text" id="modal-rating-text"></span>
+            <span class="release-date" id="modal-date"></span>
+          </div>
           <p id="modal-description" class="modal-item-description"></p>
+          <div class="modal-actions">
+            <button class="btn btn-outline" onclick="addToFavorites()">
+              <i class="far fa-heart"></i> Add to Favorites
+            </button>
+            <button class="btn btn-outline" onclick="shareMedia()">
+              <i class="fas fa-share"></i> Share
+            </button>
+          </div>
         </div>
       </div>
       
-      <div class="server-selector">
-        <label for="server" class="server-label">Change Server:</label>
-        <select id="server" onchange="changeServer()" class="server-select">
-          <option value="vidsrc.cc">Vidsrc.cc</option>
-          <option value="vidsrc.net">Vidsrc.net (was vidsrc.me)</option>
-          <option value="player.videasy.net">Player.Videasy.net</option>
-        </select>
+      <div class="streaming-section">
+        <div class="server-selector">
+          <label for="server" class="server-label">Choose Streaming Server:</label>
+          <select id="server" onchange="changeServer()" class="server-select">
+            <option value="vidsrc.cc">Server 1 (Vidsrc.cc)</option>
+            <option value="vidsrc.net">Server 2 (Vidsrc.net)</option>
+            <option value="player.videasy.net">Server 3 (Videasy.net)</option>
+          </select>
+        </div>
+        <div class="video-container">
+          <iframe id="modal-video" width="100%" height="400" frameborder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowfullscreen class="modal-iframe" title="Video Player"></iframe>
+        </div>
       </div>
-      <iframe id="modal-video" width="100%" height="315" frameborder="0" allow="fullscreen" class="modal-iframe" title="Video Player"></iframe>
     </div>
   </div>
 
-  <div class="search-modal" id="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-input">
-    <button class="close-btn search-close-btn" onclick="closeSearchModal()" aria-label="Close search">&times;</button>
-    <input type="text" id="search-input" placeholder="Search for a movie or show..." oninput="searchTMDB()" aria-label="Search input" />
-    <div class="results search-results" id="search-results"></div>
+  <!-- Search Modal -->
+  <div class="search-modal" id="search-modal" role="dialog" aria-modal="true">
+    <div class="search-modal-content">
+      <button class="close-btn search-close-btn" onclick="closeSearchModal()" aria-label="Close search">
+        <i class="fas fa-times"></i>
+      </button>
+      <div class="search-header">
+        <h3>What would you like to watch?</h3>
+        <div class="search-input-container">
+          <i class="fas fa-search search-input-icon"></i>
+          <input type="text" id="search-input" placeholder="Search movies, TV shows, anime..." 
+                 oninput="searchTMDB()" aria-label="Search input" />
+        </div>
+      </div>
+      <div class="search-results" id="search-results">
+        <div class="empty-state" id="search-empty">
+          <i class="fas fa-search"></i>
+          <p>Search for your favorite movies and TV shows</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer class="footer">
     <div class="footer-content">
-      <p>&copy; 2025 Free Flix. All rights reserved.</p>
-      <nav class="footer-links" aria-label="Footer Navigation">
-        <a href="#">Disclaimer</a>
-        <a href="#">About Us</a>
-        <a href="#">Contact Us</a>
-      </nav>
+      <div class="footer-brand">
+        <div class="logo">
+          <i class="fas fa-play-circle"></i>
+          <span>StreamFlix</span>
+        </div>
+        <p class="footer-tagline">Your gateway to unlimited entertainment</p>
+      </div>
+      <div class="footer-links-grid">
+        <div class="footer-column">
+          <h4>Browse</h4>
+          <a href="#">Movies</a>
+          <a href="#">TV Shows</a>
+          <a href="#">Anime</a>
+          <a href="#">Trending</a>
+        </div>
+        <div class="footer-column">
+          <h4>Support</h4>
+          <a href="#">Help Center</a>
+          <a href="#">Contact Us</a>
+          <a href="#">FAQ</a>
+        </div>
+        <div class="footer-column">
+          <h4>Legal</h4>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="#">Disclaimer</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 StreamFlix. This is a demo project for educational purposes.</p>
     </div>
   </footer>
+
+  <!-- Back to Top Button -->
+  <button class="back-to-top" id="back-to-top" onclick="scrollToTop()">
+    <i class="fas fa-chevron-up"></i>
+  </button>
 </body>
 </html>
-
-
-
